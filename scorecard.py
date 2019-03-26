@@ -467,7 +467,7 @@ randomizedSearchAda = RandomizedSearchCV(estimator=adaMod, param_distributions=a
 # randomizedSearchAda.best_params_, randomizedSearchAda.best_score_
 gbParams = {'loss' : ['deviance', 'exponential'],
             'n_estimators': [10,50,100,200,400],
-            'max_depth': randint(1,5),
+            'max_depth': [3,4,5],
             'learning_rate':[0.1, 0.05]}
 
 randomizedSearchGB = RandomizedSearchCV(estimator=gbMod, param_distributions=gbParams, n_iter=10,
@@ -488,12 +488,14 @@ def plotCvRocCurve(X, y, classifier, nfolds=5):
     import matplotlib.pyplot as plt
     from scipy import interp
 
-    cv = StratifiedKFold(y, n_folds=nfolds)
+    stratified_folder = StratifiedKFold(n_splits=nfolds, random_state=0, shuffle=False)
+    # 没有n_folds参数，包不一样
+    cv = stratified_folder.split(X, y)
 
     mean_tpr = 0.0
     mean_fpr = np.linspace(0, 1, 100)
     all_tpr = []
-
+    cv_length = 0
     for i, (train, test) in enumerate(cv):
         probas_ = classifier.fit(X.iloc[train], y.iloc[train]).predict_proba(X.iloc[test])
 
@@ -501,11 +503,12 @@ def plotCvRocCurve(X, y, classifier, nfolds=5):
         mean_tpr += interp(mean_fpr, fpr, tpr)
         mean_tpr[0] = 0.0
         roc_auc = auc(fpr, tpr)
+        cv_length = cv_length + 1
         plt.plot(fpr, tpr, lw=1, label='ROC fold %d (area = %0.2f)' % (i, roc_auc))
 
     plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6), label='Luck')
 
-    mean_tpr /= len(cv)
+    mean_tpr /= cv_length
     mean_tpr[-1] = 1.0
     mean_auc = auc(mean_fpr, mean_tpr)
     plt.plot(mean_fpr, mean_tpr, 'k--',
@@ -575,7 +578,7 @@ rocZeroOne(Y_test, lrMod.predict_proba(X_test))
 import statsmodels.api as sm
 from sklearn.metrics import roc_curve, auc
 # 导入数据
-data = pd.read_csv('./Woetrain.csv')
+data = pd.read_csv('Woetrain.csv')
 #应变量
 Y = data['SeriousDlqin2yrs']
 #自变量，剔除对因变量影响不明显的变量
@@ -586,7 +589,7 @@ logit = sm.Logit(Y, X1)
 result = logit.fit()
 print(result.summary())
 
-test = pd.read_csv('./TestWoeData.csv')
+test = pd.read_csv('TestWoeData.csv')
 Y_test = test['SeriousDlqin2yrs']
 # X_test = test.drop(['SeriousDlqin2yrs', 'DebtRatio', 'MonthlyIncome', 'NumberOfOpenCreditLinesAndLoans','NumberRealEstateLoansOrLines', 'NumberOfDependents'], axis=1)
 X_test = test.drop(['SeriousDlqin2yrs', 'DebtRatio', 'NumberRealEstateLoansOrLines', 'NumberOfDependents'], axis=1)
@@ -604,7 +607,7 @@ plt.xlabel('假正率')
 plt.show()
 
 
-lrMod.coef_
+# lrMod.coef_
 
 import math
 # coe为逻辑回归模型的系数
